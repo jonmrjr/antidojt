@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Emoji Card Frenzy – 3D Depth</title>
 <style>
-  :root{ --cardW:70px; --cardH:100px; }
+  :root{ --cardW:105px; --cardH:150px; }
   body{
     margin:0; padding:0; height:100vh; overflow:hidden;
     background:linear-gradient(#87ceeb, #e0f7fa);
@@ -26,6 +26,7 @@
     display:flex;flex-wrap:wrap;justify-content:center;
     max-height:160px;overflow-y:auto;width:100%;
   }
+  .collected-image{font-size:28px;margin:2px;}
   .collected-emoji{font-size:28px;margin:2px;}
   .score{
     position:absolute;top:10px;left:10px;
@@ -53,6 +54,7 @@
   .card-front{
     background:#fff;display:flex;align-items:center;
     justify-content:center;font-size:40px;
+    overflow:hidden;
   }
   .card-back{
     background:repeating-conic-gradient(from 0deg at 50% 50%, #8e24aa 0 20deg, #9c27b0 20deg 40deg);
@@ -101,7 +103,32 @@
   </div>
 
 <script>
-const emojis=['😀','😍','🤣','😎','🥳','🤩','😋','😜','🤗','😇','🥰','🤔','😏','😈','🤖','👻','👾','🤡','🦄','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🦋','🐙','🦑','🍓','🍑','🍉','🍒','🥝','🥥','🍕','🍣','🥟','🍰','🍦','🍭','🎈','🎀','🎁','🎉','✨','🔮','💥','💫','🌈','☀️','🌙','⭐','🔥','❄️','⚡','🌸','🌺','🌷','🌹','🌕','🌜','🌟','🍄','🌲','🌴','🌊','🍂','🐚','🦜','🦚','🦢','🦉','🐲','🐉','🦕','🦖','🦞','🦐','🦀','🐡','🐠','🐟','🦈','🐬','🐳','🐆','🐅','🐃','🐂','🐄','🦌','🐪','🐫','🐘','🦏','🦛','🐘','🐐','🐏','🐖','🐎','🐄','🦓','🐕','🐩','🐈','🐓','🦃','🕊️','🐇','🐁','🐀','🐿️','🦔','🦇','🐻','🐨','🐼','🦘','🦡','🐾'];
+// Array to store actual image filenames from directory
+let imageFiles = [];
+
+// Function to load the actual list of files from imgs directory
+async function loadImageList() {
+  try {
+    const response = await fetch('imgs/');
+    const text = await response.text();
+    
+    // Parse the directory listing HTML to extract image filenames
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    const links = doc.querySelectorAll('a[href]');
+    
+    imageFiles = Array.from(links)
+      .map(link => link.getAttribute('href'))
+      .filter(href => href && (href.endsWith('.jpg') || href.endsWith('.jpeg') || href.endsWith('.png') || href.endsWith('.gif')))
+      .filter(href => !href.includes('/') && href !== '../'); // Only actual files, not directories
+    
+    console.log(`Found ${imageFiles.length} image files:`, imageFiles);
+    return imageFiles.length > 0;
+  } catch (error) {
+    console.warn('Could not load directory listing:', error);
+    return false;
+  }
+}
 
 let score=0,collected=0,total=0,playing=false;
 const container=document.querySelector('.game-container');
@@ -112,10 +139,28 @@ const emojiBin=document.getElementById('collectedEmojis');
 const startBtn=document.getElementById('startButton');
 const windLine=document.getElementById('windLine');
 
-startBtn.addEventListener('click',start);
+startBtn.addEventListener('click', async function() {
+  if(playing) return;
+  
+  // Load image list first if not already loaded
+  if(imageFiles.length === 0) {
+    startBtn.textContent = 'Loading Images...';
+    startBtn.disabled = true;
+    const success = await loadImageList();
+    startBtn.textContent = 'Start Game';
+    startBtn.disabled = false;
+    
+    if (!success) {
+      alert('Could not load images from imgs/ directory. Make sure the web server supports directory listing.');
+      return;
+    }
+  }
+  
+  start();
+});
 
 function start(){
-  if(playing)return;
+  if(playing) return;
   playing=true;
   score=0;collected=0;total=0;
   scoreEl.textContent=score;
@@ -162,9 +207,23 @@ function spawn(){
 
   const front=document.createElement('div');
   front.className='card-face card-front';
-  const emoji=emojis[Math.floor(Math.random()*emojis.length)];
-  front.textContent=emoji;
-  front.dataset.emoji=emoji;
+  
+  if (imageFiles.length > 0) {
+    const imageFile = imageFiles[Math.floor(Math.random() * imageFiles.length)];
+    const img = document.createElement('img');
+    img.src = `imgs/${imageFile}`;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '10px';
+    front.appendChild(img);
+    front.dataset.image = imageFile;
+  } else {
+    // Fallback if no images loaded
+    front.textContent = '📷';
+    front.style.fontSize = '40px';
+    front.dataset.image = 'fallback.jpg';
+  }
 
   const back=document.createElement('div');
   back.className='card-face card-back';
@@ -229,13 +288,13 @@ container.addEventListener('click',(e)=>{
     const cy=rect.top+rect.height/2;
     const dx=cx-x, dy=cy-y;
     if(Math.sqrt(dx*dx+dy*dy)<=RADIUS){
-      const emoji=scene.querySelector('.card-front').dataset.emoji;
-      collectCard(scene, emoji);
+      const imageFile=scene.querySelector('.card-front').dataset.image;
+      collectCard(scene, imageFile);
     }
   });
 });
 
-function collectCard(scene, emoji){
+function collectCard(scene, imageFile){
   const rect=scene.getBoundingClientRect();
   const targetRect=document.querySelector('.collection-area').getBoundingClientRect();
 
@@ -260,10 +319,17 @@ function collectCard(scene, emoji){
   collected++;
   scoreEl.textContent=score;
   collEl.textContent=collected;
-  const span=document.createElement('span');
-  span.className='collected-emoji';
-  span.textContent=emoji;
-  emojiBin.appendChild(span);
+  const thumbnailContainer=document.createElement('div');
+  thumbnailContainer.className='collected-image';
+  thumbnailContainer.style.cssText='width:28px;height:28px;margin:2px;display:inline-block;overflow:hidden;border-radius:4px;';
+  
+  const thumbnailImg=document.createElement('img');
+  thumbnailImg.src=`imgs/${imageFile}`;
+  thumbnailImg.style.cssText='width:100%;height:100%;object-fit:cover;';
+  thumbnailImg.title=imageFile; // Show filename on hover
+  
+  thumbnailContainer.appendChild(thumbnailImg);
+  emojiBin.appendChild(thumbnailContainer);
 }
 </script>
 </body>
