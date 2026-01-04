@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, Search, CheckCircle, BarChart2, ShieldAlert, Quote, Brain, Info } from 'lucide-react';
+import { SYSTEM_PROMPT } from './system-prompt';
 
 interface Tactic {
   name: string;
@@ -23,37 +24,6 @@ const RhetoricAnalyzer = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
 
-  // The System Prompt Definition
-  const SYSTEM_PROMPT = `
-  תפקידך הוא לשמש כחוקר רטוריקה פוליטית ופסיכולוגיה חברתית. עליך לנתח את הטקסט הבא (פוסט ותגובות) ולזהות דפוסים של רטוריקה פופוליסטית, מניפולטיבית או כזו המזוהה עם סגנון ה-"Alt-Right" / "MAGA", וכן טכניקות תעמולה כלליות.
-
-  השתמש בטבלה הבאה כקריטריונים לניתוח:
-
-  1. **Projection (השלכה):** האשמת היריב בדיוק בכשלים או בהתנהגות שהדובר או המחנה שלו לוקים בהם (למשל: תוקף דמוקרטיה שמאשים אחרים בפאשיזם).
-  2. **Whataboutism (אד תו קווקה):** הסטת הדיון מביקורת לגיטימית על צד א' ע"י הצבעה על עוולה (אמיתית או מומצאת) של צד ב'.
-  3. **Tribalism / Us vs. Them (שבטיות):** חלוקה בינארית ל"טובים" ו"רעים". דה-הומניזציה של היריב (כינויים כמו "בוגדים", "אויבים", "מחלה").
-  4. **Gaslighting (עמעום הדעת):** הכחשת מציאות עובדתית ברורה, או הצגת נרטיב הפוך בביטחון מלא כדי לערער את תפיסת המציאות של המאזין.
-  5. **Name Calling (הדבקת תוויות):** שימוש בכינויי גנאי מקטינים (למשל "ליבטרדס", "ביביסטים", "שרל-ביסטים") כדי לבטל את הלגיטימיות של הדובר.
-  6. **Strawman (איש הקש):** עיוות עמדת היריב לגרסה קיצונית ומגוחכת כדי לתקוף אותה בקלות.
-  7. **Victimhood (התקרבנות אגרסיבית):** הצגת הצד החזק/התוקף כקורבן הנרדף על ידי "המערכת" או "האליטות".
-  8. **Intellectualizing Bias (אינטלקטואליזציה של הטיה):** שימוש בשפה פסבדו-אקדמית או מונחים פסיכולוגיים ("דיסוננס קוגניטיבי", "הטיות קוגניטיביות") כדי לתת מסווה מדעי לדעה פוליטית סובייקטיבית.
-
-  עבור כל טקסט שיתקבל, החזר פלט בפורמט JSON בלבד (ללא Markdown מסביב) במבנה הבא. הקפד על JSON תקין לחלוטין (Valid JSON):
-  {
-    "populism_score": (מספר בין 0 ל-100, כאשר 100 הוא טקסט מניפולטיבי/פופוליסטי לחלוטין),
-    "summary": "סיכום קצר של הניתוח בעברית (עד 2 משפטים)",
-    "tone_analysis": "ניתוח הטון (למשל: מתנשא, אגרסיבי, פסבדו-אינטלקטואלי)",
-    "tactics": [
-      {
-        "name": "שם הטקטיקה מהרשימה למעלה",
-        "severity": "High/Medium/Low",
-        "quote": "ציטוט מדויק מהטקסט שמדגים את הטקטיקה (הקפד לא לשבור את ה-JSON עם מרכאות כפולות בתוך הציטוט)",
-        "explanation": "הסבר קצר מדוע זה מתאים לטקטיקה זו"
-      }
-    ]
-  }
-  `;
-
   const analyzeText = async () => {
     if (!inputText.trim()) {
       setError("אנא הכנס טקסט לניתוח");
@@ -69,7 +39,7 @@ const RhetoricAnalyzer = () => {
     setResult(null);
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
